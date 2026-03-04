@@ -1,27 +1,41 @@
 from database import get_connection
-from langchain_openai import OpenAIEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 import numpy as np
 
-embeddings = OpenAIEmbeddings()
+embeddings = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
+)
 
-def search_knowledge(question, top_k=3):
+def dynamic_top_k(question):
+
+    length = len(question.split())
+
+    if length < 5:
+        return 2
+    elif length < 12:
+        return 4
+    else:
+        return 6
+
+
+def search_knowledge(question):
 
     query_embedding = embeddings.embed_query(question)
+
+    top_k = dynamic_top_k(question)
 
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute(
-        "SELECT content, embedding FROM knowledge"
-    )
+    cur.execute("SELECT content, embedding FROM knowledge")
 
     rows = cur.fetchall()
 
     scores = []
 
-    for r in rows:
-        content = r[0]
-        vector = r[1]
+    for content, vector in rows:
+
+        vector = np.array(vector)
 
         score = np.dot(query_embedding, vector)
 
@@ -29,7 +43,7 @@ def search_knowledge(question, top_k=3):
 
     scores.sort(reverse=True)
 
-    results = [s[1] for s in scores[:top_k]]
+    results = [r[1] for r in scores[:top_k]]
 
     cur.close()
     conn.close()
