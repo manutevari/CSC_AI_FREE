@@ -1,0 +1,18 @@
+with tab4:
+
+    conn = psycopg2.connect(st.secrets["DB_URL"])
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT query,source_used,confidence,created_at
+    FROM audit_logs
+    ORDER BY created_at DESC
+    LIMIT 20
+    """)
+
+    rows = cursor.fetchall()
+
+    for r in rows:
+
+        st.write(r)
